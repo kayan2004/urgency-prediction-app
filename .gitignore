@@ -6,7 +6,15 @@ dist/
 wheels/
 *.egg-info
 dataset
+logs/*
+!logs/.gitkeep
+model/*
+!model/.gitkeep
+!model/chroma_db/
+model/chroma_db/*
+!model/chroma_db/.gitkeep
+
+
 # Virtual environments
 .venv
-
 .env
