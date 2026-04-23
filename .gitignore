@@ -5,14 +5,16 @@ build/
 dist/
 wheels/
 *.egg-info
-dataset
+dataset/*
+!dataset/retrieval/
+dataset/retrieval/*
+!dataset/retrieval/support_tickets_for_rag.csv
 logs/*
 !logs/.gitkeep
 model/*
 !model/.gitkeep
-!model/chroma_db/
-model/chroma_db/*
-!model/chroma_db/.gitkeep
+!model/best_logistic_regression.joblib
+!model/rag_voyage_embeddings.npy
 
 
 # Virtual environments
