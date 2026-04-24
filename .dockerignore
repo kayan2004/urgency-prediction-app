@@ -7,5 +7,11 @@ __pycache__
 .ipynb_checkpoints
 notebook
 dataset/twcs
+dataset/sample.csv
+dataset/retrieval/support_tickets_for_rag.jsonl
+model/chroma_db
+model/rag_document_matrix.joblib
+model/rag_embedding_metadata.json
+model/rag_voyage_embedding_metadata.json
 dist
 build
