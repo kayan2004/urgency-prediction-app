@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from dotenv import load_dotenv
 
+from schemas.metrics import RuntimeMetrics
 from schemas.retrieve import RetrievedChunk
 from services.ml_service import normalize_text
 
@@ -55,12 +56,26 @@ def _is_retryable_generation_error(exc: Exception) -> bool:
     )
 
 
-def _generate_text(prompt: str, *, context_name: str) -> str:
+def _build_metrics(*, started_at: float, response) -> RuntimeMetrics:
+    usage = getattr(response, "usage_metadata", None)
+    prompt_tokens = int(getattr(usage, "prompt_token_count", 0) or 0)
+    output_tokens = int(getattr(usage, "candidates_token_count", 0) or 0)
+    total_tokens = int(getattr(usage, "total_token_count", 0) or 0)
+    return RuntimeMetrics(
+        latency_ms=round((time.perf_counter() - started_at) * 1000, 2),
+        prompt_tokens=prompt_tokens,
+        output_tokens=output_tokens,
+        total_tokens=total_tokens,
+    )
+
+
+def _generate_text(prompt: str, *, context_name: str) -> tuple[str, RuntimeMetrics]:
     client = _get_client()
 
     last_exception: Exception | None = None
     for attempt in range(DEFAULT_GENERATION_MAX_RETRIES + 1):
         try:
+            started_at = time.perf_counter()
             response = client.models.generate_content(
                 model=DEFAULT_RAG_MODEL,
                 contents=prompt,
@@ -68,7 +83,7 @@ def _generate_text(prompt: str, *, context_name: str) -> str:
             answer = getattr(response, "text", None)
             if not answer:
                 raise ValueError(f"Gemini returned an empty response for the {context_name}.")
-            return answer.strip()
+            return answer.strip(), _build_metrics(started_at=started_at, response=response)
         except ValueError:
             raise
         except Exception as exc:
@@ -177,20 +192,20 @@ def _parse_priority_response(response_text: str) -> dict[str, str]:
 def generate_rag_answer(
     query: str,
     sources: list[RetrievedChunk],
-) -> str:
+) -> tuple[str, RuntimeMetrics]:
     prompt = _build_rag_prompt(query=query, sources=sources)
     return _generate_text(prompt, context_name="RAG answer")
 
 
-def generate_non_rag_answer(query: str) -> str:
+def generate_non_rag_answer(query: str) -> tuple[str, RuntimeMetrics]:
     prompt = _build_non_rag_prompt(query=query)
     return _generate_text(prompt, context_name="non-RAG answer")
 
 
-def generate_llm_priority_prediction(text: str) -> dict[str, str]:
+def generate_llm_priority_prediction(text: str) -> dict[str, str | RuntimeMetrics]:
     clean_text = normalize_text(text)
     prompt = _build_priority_prompt(text=clean_text)
-    answer = _generate_text(prompt, context_name="LLM priority prediction")
+    answer, metrics = _generate_text(prompt, context_name="LLM priority prediction")
 
     parsed = _parse_priority_response(answer)
     return {
@@ -198,4 +213,5 @@ def generate_llm_priority_prediction(text: str) -> dict[str, str]:
         "clean_text": clean_text,
         "predicted_priority": parsed["predicted_priority"],
         "rationale": parsed["rationale"],
+        "metrics": metrics,
     }

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from schemas.metrics import RuntimeMetrics
 from schemas.retrieve import RetrievedChunk
 
 
@@ -14,6 +15,7 @@ class RagAnswerResponse(BaseModel):
     query: str
     top_k: int
     answer: str
+    metrics: RuntimeMetrics
     sources: list[RetrievedChunk]
 
 
@@ -24,3 +26,4 @@ class NonRagAnswerRequest(BaseModel):
 class NonRagAnswerResponse(BaseModel):
     query: str
     answer: str
+    metrics: RuntimeMetrics
